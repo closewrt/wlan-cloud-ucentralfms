@@ -49,6 +49,7 @@ s3.region = ${S3_REGION}
 s3.secret = ${S3_SECRET}
 s3.key = ${S3_KEY}
 s3.retry = 60
+#tip only use URL, not include protocol, closewrt custom it, allow use http://URL or https://URL
 s3.bucket.uri = ${S3_BUCKET_URI}
 
 #############################
@@ -113,3 +114,11 @@ storage.type.mysql.connectiontimeout = 60
 logging.type = console
 logging.path = $OWFMS_ROOT/logs
 logging.level = debug
+
+
+########################################################################
+#
+# closewrt custom aws config
+#
+########################################################################
+s3.endpoint.uri = ${S3_ENDPOINT_URI}

@@ -28,6 +28,7 @@ if [[ "$TEMPLATE_CONFIG" = 'true' ]]; then
   S3_SECRET=${S3_SECRET:-"*******************************************"} \
   S3_KEY=${S3_KEY:-"*******************************************"} \
   S3_BUCKET_URI=${S3_BUCKET_URI:-"ucentral-ap-firmware.s3.amazonaws.com"} \
+  S3_ENDPOINT_URI=${S3_ENDPOINT_URI:-""} \
   KAFKA_ENABLE=${KAFKA_ENABLE:-"true"} \
   KAFKA_BROKERLIST=${KAFKA_BROKERLIST:-"localhost:9092"} \
   KAFKA_SSL_CA_LOCATION=${KAFKA_SSL_CA_LOCATION:-""} \
