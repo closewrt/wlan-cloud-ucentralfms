@@ -114,15 +114,33 @@ namespace OpenWifi {
         S3Secret_ = MicroService::instance().ConfigGetString("s3.secret");
         S3Key_ = MicroService::instance().ConfigGetString("s3.key");
         S3Retry_ = MicroService::instance().ConfigGetInt("s3.retry",60);
+        S3EndpointOverride_ = MicroService::instance().ConfigGetString("s3.endpoint.uri");
 
         DBRefresh_ = MicroService::instance().ConfigGetInt("firmwaredb.refresh",30*60);
         MaxAge_ = MicroService::instance().ConfigGetInt("firmwaredb.maxage",90) * 24 * 60 * 60;
 
         AwsConfig_.enableTcpKeepAlive = true;
         AwsConfig_.enableEndpointDiscovery = true;
-        AwsConfig_.useDualStack = true;
+        AwsConfig_.endpointOverride = S3EndpointOverride_;
+
         if(!S3Region_.empty())
             AwsConfig_.region = S3Region_;
+
+        if (!S3EndpointOverride_.empty()) {
+            AwsConfig_.useDualStack = false;
+            if (S3EndpointOverride_.substr(0, 7) == "http://") {
+                /* minio http server */
+                AwsConfig_.scheme = Aws::Http::Scheme::HTTP;
+                AwsConfig_.verifySSL = false;
+            } else if (S3EndpointOverride_.substr(0, 8) == "https://" ) {
+                /* minio https server */
+                AwsConfig_.scheme = Aws::Http::Scheme::HTTPS;
+                AwsConfig_.verifySSL = true;
+            }
+            poco_debug(Logger(),fmt::format("full endpointOverride is : {}", S3EndpointOverride_));
+        } else {
+            AwsConfig_.useDualStack = true;
+        }
         AwsCreds_.SetAWSAccessKeyId(S3Key_);
         AwsCreds_.SetAWSSecretKey(S3Secret_);
 
@@ -167,15 +185,27 @@ namespace OpenWifi {
     bool ManifestCreator::ReadBucket(S3BucketContent & Bucket) {
         static const std::string JSON(".json");
         static const std::string UPGRADE("-upgrade.bin");
+        bool useVirtualAddressing = true;
 
-        std::string     URIBase = "https://";
-        URIBase += MicroService::instance().ConfigGetString("s3.bucket.uri");
+        std::string     DefaultURIBase = "https://";
+        std::string     URIBase = MicroService::instance().ConfigGetString("s3.bucket.uri");
+
+        if (URIBase.substr(0, 7) != "http://" && URIBase.substr(0, 8) != DefaultURIBase ) {
+            URIBase = DefaultURIBase + URIBase;
+        }
+        poco_debug(Logger(),fmt::format("full URIBase is : {}", URIBase));
 
         Bucket.clear();
 
         Aws::S3::Model::ListObjectsV2Request Request;
         Request.WithBucket(S3BucketName_.c_str());
-        Aws::S3::S3Client S3Client(AwsCreds_,AwsConfig_);
+        if (!S3EndpointOverride_.empty()) {
+            useVirtualAddressing = false;
+        }
+
+        Aws::S3::S3Client S3Client(AwsCreds_, AwsConfig_,
+                        Aws::Client::AWSAuthV4Signer::PayloadSigningPolicy::Never, useVirtualAddressing);
+
         Request.SetMaxKeys(100);
         Aws::S3::Model::ListObjectsV2Outcome Outcome;
 
